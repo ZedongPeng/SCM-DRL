@@ -20,10 +20,6 @@ def normalize(values, mean=0., std=1.):
     values = (values - values.mean()) / (values.std() + 1e-8)
     return mean + (std + 1e-8) * values
 
-    #========================================================================================#
-    #                           ----------PROBLEM 2----------
-    #========================================================================================#
-
 
 def build_mlp(input_placeholder, output_size, scope, n_layers, size, activation=tf.tanh, output_activation=None):
     """
@@ -43,12 +39,12 @@ def build_mlp(input_placeholder, output_size, scope, n_layers, size, activation=
 
         Hint: use tf.layers.dense
     """
-    # YOUR CODE HERE
     with tf.variable_scope(scope):
         x = input_placeholder
         for h in range(n_layers):
             x = tf.layers.dense(x, units=size, activation=activation)
-        output_placeholder = tf.layers.dense(x, units=output_size, activation=output_activation)
+        output_placeholder = tf.layers.dense(
+            x, units=output_size, activation=output_activation)
     return output_placeholder
 
 
@@ -90,14 +86,12 @@ class Agent(object):
         self.normalize_advantages = estimate_return_args['normalize_advantages']
 
     def init_tf_sess(self):
-        tf_config = tf.ConfigProto(inter_op_parallelism_threads=1, intra_op_parallelism_threads=1)
+        tf_config = tf.ConfigProto(
+            inter_op_parallelism_threads=1, intra_op_parallelism_threads=1)
         self.sess = tf.Session(config=tf_config)
         self.sess.__enter__()  # equivalent to `with self.sess:`
         tf.global_variables_initializer().run()  # pylint: disable=E1101
 
-    #========================================================================================#
-    #                           ----------PROBLEM 2----------
-    #========================================================================================#
     def define_placeholders(self):
         """
             Placeholders for batch batch observations / actions / advantages in policy gradient
@@ -110,21 +104,20 @@ class Agent(object):
                 sy_adv_n: placeholder for advantages
                 sy_allowed_ac_na: placeholder for the flag bit of allowed actions
         """
-        sy_ob_no = tf.placeholder(shape=[None, self.ob_dim], name="ob", dtype=tf.float32)
+        sy_ob_no = tf.placeholder(
+            shape=[None, self.ob_dim], name="ob", dtype=tf.float32)
         if self.discrete:
             sy_ac_na = tf.placeholder(shape=[None], name="ac", dtype=tf.int32)
-            sy_allowed_ac_na = tf.placeholder(shape=[None, self.ac_dim], name="allowed_ac1", dtype=tf.float32)
+            sy_allowed_ac_na = tf.placeholder(
+                shape=[None, self.ac_dim], name="allowed_ac1", dtype=tf.float32)
         else:
-            sy_ac_na = tf.placeholder(shape=[None, self.ac_dim], name="ac", dtype=tf.float32)
-            sy_allowed_ac_na = tf.placeholder(shape=[None, self.ac_dim], name="allowed_ac2", dtype=tf.float32)
-        # YOUR CODE HERE
-        # sy_adv_n = tf.placeholder(shape=[None, self.ob_dim, self.ac_dim], name="adv", dtype=tf.float32)
+            sy_ac_na = tf.placeholder(
+                shape=[None, self.ac_dim], name="ac", dtype=tf.float32)
+            sy_allowed_ac_na = tf.placeholder(
+                shape=[None, self.ac_dim], name="allowed_ac2", dtype=tf.float32)
         sy_adv_n = tf.placeholder(shape=[None], name="adv", dtype=tf.float32)
         return sy_ob_no, sy_ac_na, sy_adv_n, sy_allowed_ac_na
 
-    #========================================================================================#
-    #                           ----------PROBLEM 2----------
-    #========================================================================================#
     def policy_forward_pass(self, sy_ob_no, sy_allowed_ac_na):
         """ Constructs the symbolic operation for the policy network outputs,
             which are the parameters of the policy distribution p(a|s)
@@ -153,25 +146,16 @@ class Agent(object):
         temp = tf.placeholder(shape=[None], name="allowed_ac", dtype=tf.int32)
 
         if self.discrete:
-            # sy_logits_na1 = build_mlp(sy_ob_no, self.ac_dim, 'policy_mlp', self.n_layers, self.size, output_activation=tf.nn.softmax)
-            sy_logits_na1 = build_mlp(sy_ob_no, self.ac_dim, 'policy_mlp', self.n_layers, self.size)
-            # sy_logits_na1 = tf.Print(sy_logits_na1, [sy_logits_na1], 'sy_logits_na1: ', summarize=-1)
+            sy_logits_na1 = build_mlp(
+                sy_ob_no, self.ac_dim, 'policy_mlp', self.n_layers, self.size)
             sy_logits_na = sy_logits_na1 + sy_allowed_ac_na
-            # sy_logits_na = tf.Print(sy_logits_na, [sy_logits_na], 'sy_logits_na: ', summarize=-1)  # , summarize=-1
-            # YOUR_CODE_HERE
-            # sy_logits_na = build_mlp(sy_ob_no, [None, self.ac_dim], 'scope', self.n_layers, self.size)
             return sy_logits_na
         else:
-            sy_mean = build_mlp(sy_ob_no, self.ac_dim, 'policy_mlp', self.n_layers, self.size)
+            sy_mean = build_mlp(sy_ob_no, self.ac_dim,
+                                'policy_mlp', self.n_layers, self.size)
             sy_logstd = tf.get_variable('sy_logstd', [self.ac_dim])
-            # YOUR_CODE_HERE
-            # sy_mean = build_mlp(self.ob_dim, [None, self.ac_dim], 'scope', self.n_layers, self.size)
-            # sy_logstd = tf.get_variable(name='sy_logstd', initializer=tf.ones_initializer, shape=self.ac_dim, trainable=True)
             return (sy_mean, sy_logstd)
 
-    #========================================================================================#
-    #                           ----------PROBLEM 2----------
-    #========================================================================================#
     def sample_action(self, policy_parameters):
         """ Constructs a symbolic operation for stochastically sampling from the policy
             distribution
@@ -197,27 +181,15 @@ class Agent(object):
                  This reduces the problem to just sampling z. (Hint: use tf.random_normal!)
         """
         if self.discrete:
-            # sy_logits_na = tf.nn.softmax(policy_parameters)
             sy_logits_na = policy_parameters
-            # sy_logits_na = tf.Print(sy_logits_na, [sy_logits_na], 'sy_logits_na: ', summarize=-1)
-
-            # sy_sampled_ac = tf.squeeze(tf.multinomial(tf.log(sy_logits_na), 1), axis=1)
             sy_sampled_ac = tf.squeeze(tf.multinomial(sy_logits_na, 1), axis=1)
-
-            # YOUR_CODE_HERE
-            # sy_sampled_ac = tf.multinomial(sy_logits_na, 1)
-            # sy_sampled_ac = tf.distributions.Categorical(logits=sy_logits_na) # the input of Categorical is logprob
         else:
             sy_mean, sy_logstd = policy_parameters
-            # YOUR_CODE_HERE
-            sy_sampled_ac = sy_mean + tf.exp(sy_logstd) * tf.random_normal(shape=tf.shape(sy_mean))
-            # sy_sampled_ac = tf.random_normal(shape=[None, self.ac_dim], mean=sy_mean, stddev=sy_logstd, dtype=tf.float32)
+            sy_sampled_ac = sy_mean + \
+                tf.exp(sy_logstd) * tf.random_normal(shape=tf.shape(sy_mean))
 
         return sy_sampled_ac
 
-    #========================================================================================#
-    #                           ----------PROBLEM 2----------
-    #========================================================================================#
     def get_log_prob(self, policy_parameters, sy_ac_na):
         """ Constructs a symbolic operation for computing the log probability of a set of actions
             that were actually taken according to the policy
@@ -243,9 +215,7 @@ class Agent(object):
         """
         if self.discrete:
             sy_logits_na = policy_parameters
-            # policy_parameters = tf.Print(policy_parameters, [policy_parameters], 'policy_parameters: ', summarize=-1)
 
-            # YOUR_CODE_HERE
             # In tensorflow, 'sparse_softmax_cross_entropy_with_logits' gives the negative likelihood, not positive likelihood
             sy_logprob_n = tf.nn.sparse_softmax_cross_entropy_with_logits(
                 labels=sy_ac_na,
@@ -253,7 +223,6 @@ class Agent(object):
             )
         else:
             sy_mean, sy_logstd = policy_parameters
-            # YOUR_CODE_HERE
             sy = (sy_ac_na - sy_mean) / tf.exp(sy_logstd)
             sy_logprob_n = 0.5 * tf.reduce_sum(sy * sy, axis=1)
         return sy_logprob_n
@@ -282,27 +251,27 @@ class Agent(object):
         self.sy_ob_no, self.sy_ac_na, self.sy_adv_n, self.sy_allowed_ac_na = self.define_placeholders()
 
         # The policy takes in an observation and produces a distribution over the action space
-        self.policy_parameters = self.policy_forward_pass(self.sy_ob_no, self.sy_allowed_ac_na)
-        # self.policy_parameters = tf.Print(self.policy_parameters, [self.policy_parameters], 'self.policy_parameters: ', summarize=-1)
+        self.policy_parameters = self.policy_forward_pass(
+            self.sy_ob_no, self.sy_allowed_ac_na)
 
         # We can sample actions from this action distribution.
         # This will be called in Agent.sample_trajectory() where we generate a rollout.
         self.sy_sampled_ac = self.sample_action(self.policy_parameters)
-        # self.sy_sampled_ac = tf.Print(self.sy_sampled_ac, [self.sy_sampled_ac], 'self.sy_sampled_ac: ', summarize=-1)
 
         # We can also compute the logprob of the actions that were actually taken by the policy
         # This is used in the loss function.
-        self.sy_logprob_n = self.get_log_prob(self.policy_parameters, self.sy_ac_na)
+        self.sy_logprob_n = self.get_log_prob(
+            self.policy_parameters, self.sy_ac_na)
 
         #========================================================================================#
-        #                           ----------PROBLEM 2----------
         # Loss Function and Training Operation
         #========================================================================================#
-        loss = tf.reduce_mean(self.sy_logprob_n * self.sy_adv_n)  # YOUR CODE HERE
-        self.update_op = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
+        loss = tf.reduce_mean(self.sy_logprob_n *
+                              self.sy_adv_n)  # YOUR CODE HERE
+        self.update_op = tf.train.AdamOptimizer(
+            self.learning_rate).minimize(loss)
 
         #========================================================================================#
-        #                           ----------PROBLEM 6----------
         # Optional Baseline
         #
         # Define placeholders for targets, a loss function and an update op for fitting a
@@ -315,24 +284,25 @@ class Agent(object):
                 scope="nn_baseline",
                 n_layers=self.n_layers,
                 size=self.size))
-            # YOUR_CODE_HERE
-            self.sy_target_n = tf.placeholder(shape=[None], name='target', dtype=tf.float32)
-            baseline_loss = tf.nn.l2_loss(self.baseline_prediction - self.sy_target_n)
-            self.baseline_update_op = tf.train.AdamOptimizer(self.learning_rate).minimize(baseline_loss)
+            self.sy_target_n = tf.placeholder(
+                shape=[None], name='target', dtype=tf.float32)
+            baseline_loss = tf.nn.l2_loss(
+                self.baseline_prediction - self.sy_target_n)
+            self.baseline_update_op = tf.train.AdamOptimizer(
+                self.learning_rate).minimize(baseline_loss)
 
     def sample_trajectories(self, itr, env):
         # Collect paths until we have enough timesteps
         timesteps_this_batch = 0
         paths = []
         while True:
-            animate_this_episode = (len(paths) == 0 and (itr % 10 == 0) and self.animate)
+            animate_this_episode = (len(paths) == 0 and (
+                itr % 10 == 0) and self.animate)
             path = self.sample_trajectory(env, animate_this_episode)
             paths.append(path)
             timesteps_this_batch += pathlength(path)
             if timesteps_this_batch >= self.min_timesteps_per_batch:  # 这里的batchsize指的是pathlength
                 break
-        # print('paths: \n', paths)
-        # print('paths["allowed_actions"].shape: ', paths["allowed_actions"].shape)
         return paths, timesteps_this_batch
 
     def sample_trajectory(self, env, animate_this_episode):
@@ -346,33 +316,16 @@ class Agent(object):
                 env.render()
                 time.sleep(0.1)
             obs.append(ob)
-            #====================================================================================#
-            #                           ----------PROBLEM 3----------
-            #====================================================================================#
-            # print('state ', ob)
-
-            # allowed_action = env.allowed_action()
             allowed_action = np.where(env.allowed_action() == 1, 0, -np.inf)
-            # print('----------------\n', ob.shape)
-            # print('ob: ', ob)
-            # allowed_action = np.repeat()
             allowed_actions.append(allowed_action)
-            # print('allowed_action: ', allowed_action)
 
-            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_ob_no: ob.reshape(1, -1), self.sy_allowed_ac_na: allowed_action.reshape(1, -1)})
+            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_ob_no: ob.reshape(
+                1, -1), self.sy_allowed_ac_na: allowed_action.reshape(1, -1)})
 
-            # print('sy_logprob_n', self.sy_logprob_n.eval())
-            # ac = self.sy_sampled_ac  # YOUR CODE HERE
             ac = ac[0]
             acs.append(ac)
-            ob, rew, done, _ = env.step(ac)  # map the Discrete() to real action in env
-
-            # print('state: ', ob)
-            # print('allowed_action ', env.allowed_action())
-            # print('action ', ac)
-            # print('true action ', temp[ac])
-            # print('reward ', rew, end='\n\n')
-
+            # map the Discrete() to real action in env
+            ob, rew, done, _ = env.step(ac)
             rewards.append(rew)
             steps += 1
             if done or steps > self.max_path_length:
@@ -381,13 +334,8 @@ class Agent(object):
                 "reward": np.array(rewards, dtype=np.float32),
                 "action": np.array(acs, dtype=np.float32),
                 "allowed_actions": np.array(allowed_actions, dtype=np.float32)}
-        # print(path["action"].shape)
-        # print(path["allowed_actions"].shape)
         return path
 
-    #====================================================================================#
-    #                           ----------PROBLEM 3----------
-    #====================================================================================#
     def sum_of_rewards(self, re_n):
         """
             Monte Carlo estimation of the Q function.
@@ -454,32 +402,6 @@ class Agent(object):
             Store the Q-values for all timesteps and all trajectories in a variable 'q_n',
             like the 'ob_no' and 'ac_na' above.
         """
-        # YOUR_CODE_HERE
-
-        # code2
-        # for i in re_n:
-        #     print(i)
-        # num_paths = len(re_n)
-        # sum_of_path_lengths = sum(len(r) for r in re_n)
-        # q_n = np.zeros(sum_of_path_lengths)
-        # i = 0
-        # for r in re_n:
-        #     l = len(r)
-        #     q_n[i + l - 1] = r[-1]
-        #     for j in range(l - 2, -1, -1):
-        #         q_n[i + j] = r[j] + self.gamma * q_n[i + j + 1]
-        #     i += l
-        # if not self.reward_to_go:
-        #     i = 0
-        #     for r in re_n:
-        #         l = len(r)
-        #         q_n[i:i + l] = q_n[i]
-        #         i += l
-        # print(q_n)
-        # print(q_n.shape)
-        # return q_n
-
-        # code3
         q_n = []
         for tau in re_n:
             result = []
@@ -510,7 +432,6 @@ class Agent(object):
                     advantages whose length is the sum of the lengths of the paths
         """
         #====================================================================================#
-        #                           ----------PROBLEM 6----------
         # Computing Baselines
         #====================================================================================#
         if self.nn_baseline:
@@ -521,9 +442,9 @@ class Agent(object):
             # Hint #bl1: rescale the output from the nn_baseline to match the statistics
             # (mean and std) of the current batch of Q-values. (Goes with Hint
             # #bl2 in Agent.update_parameters.
-            # print('-----1----')
 
-            b_n = self.sess.run(self.baseline_prediction, feed_dict={self.sy_ob_no: ob_no})  # YOUR CODE HERE
+            b_n = self.sess.run(self.baseline_prediction, feed_dict={
+                                self.sy_ob_no: ob_no})  # YOUR CODE HERE
             b_n = normalize(b_n, q_n.mean(), q_n.std())
             adv_n = q_n - b_n
         else:
@@ -552,14 +473,13 @@ class Agent(object):
         q_n = self.sum_of_rewards(re_n)
         adv_n = self.compute_advantage(ob_no, q_n)
         #====================================================================================#
-        #                           ----------PROBLEM 3----------
         # Advantage Normalization
         #====================================================================================#
         if self.normalize_advantages:
             # On the next line, implement a trick which is known empirically to reduce variance
             # in policy gradient methods: normalize adv_n to have mean zero and std=1.
             # raise NotImplementedError
-            adv_n = normalize(adv_n)  # YOUR_CODE_HERE
+            adv_n = normalize(adv_n)
         return q_n, adv_n
 
     def update_parameters(self, ob_no, ac_na, q_n, adv_n, allowed_actions):
@@ -580,7 +500,6 @@ class Agent(object):
 
         """
         #====================================================================================#
-        #                           ----------PROBLEM 6----------
         # Optimizing Neural Network Baseline
         #====================================================================================#
         if self.nn_baseline:
@@ -594,7 +513,6 @@ class Agent(object):
             # targets to have mean zero and std=1. (Goes with Hint #bl1 in
             # Agent.compute_advantage.)
 
-            # YOUR_CODE_HERE
             target_n = normalize(q_n)
             _ = self.sess.run(self.baseline_update_op, feed_dict={
                 self.sy_ob_no: ob_no,
@@ -602,7 +520,6 @@ class Agent(object):
             })
 
         #====================================================================================#
-        #                           ----------PROBLEM 3----------
         # Performing the Policy Update
         #====================================================================================#
 
@@ -612,7 +529,6 @@ class Agent(object):
         # For debug purposes, you may wish to save the value of the loss function before
         # and after an update, and then log them below.
 
-        # YOUR_CODE_HERE
         _ = self.sess.run(self.update_op, feed_dict={
             self.sy_ob_no: ob_no,
             self.sy_ac_na: ac_na,
@@ -725,7 +641,8 @@ def train_PG(
         'normalize_advantages': normalize_advantages,
     }
 
-    agent = Agent(computation_graph_args, sample_trajectory_args, estimate_return_args)
+    agent = Agent(computation_graph_args,
+                  sample_trajectory_args, estimate_return_args)
 
     # build computation graph
     agent.build_computation_graph()
@@ -752,17 +669,12 @@ def train_PG(
         re_n = [path["reward"] for path in paths]
         allowed_actions = [path["allowed_actions"] for path in paths]
         allowed_actions = np.array(allowed_actions)
-        allowed_actions = np.reshape(allowed_actions, (-1, allowed_actions.shape[2]))
-        # print('------------\n', re_n)
-        # print(np.sum(re_n), '------------\n')
+        allowed_actions = np.reshape(
+            allowed_actions, (-1, allowed_actions.shape[2]))
         re_sum.append(np.sum(re_n))
 
         q_n, adv_n = agent.estimate_return(ob_no, re_n)
         agent.update_parameters(ob_no, ac_na, q_n, adv_n, allowed_actions)
-        # print('\nac_na :', ac_na.shape, '\n', ac_na)
-        # print('\nob_no ', ob_no.shape, '\n', ob_no)
-        # print('\nob_no ', ob_no.shape, '\n', ob_no, '\nac_na ', ac_na.shape, '\n', ac_na, '\nq_n', q_n.shape, '\n', q_n,
-        #       '\nadv_n', adv_n.shape, '\n', adv_n, '\nallowed_actions', allowed_actions.shape, '\n', allowed_actions)
 
         # Log diagnostics
         returns = [path["reward"].sum() for path in paths]
@@ -779,8 +691,6 @@ def train_PG(
         logz.log_tabular("TimestepsSoFar", total_timesteps)
         logz.dump_tabular()
         logz.pickle_tf_vars()
-    # pd.DataFrame(re_sum).to_csv("data/" + exp_name + "_sumed_reward_pg3.csv", header=None, index=None)
-    # print('re_sum', re_sum)
 
 
 def main():
@@ -799,7 +709,8 @@ def main():
     parser.add_argument('--ep_len', '-ep', type=float, default=-1.)
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)
     parser.add_argument('--reward_to_go', '-rtg', action='store_true')
-    parser.add_argument('--dont_normalize_advantages', '-dna', action='store_true')
+    parser.add_argument('--dont_normalize_advantages',
+                        '-dna', action='store_true')
     parser.add_argument('--nn_baseline', '-bl', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--n_experiments', '-e', type=int, default=1)
@@ -809,7 +720,6 @@ def main():
 
     if not(os.path.exists('data')):
         os.makedirs('data')
-    # logdir = args.exp_name + '_' + time.strftime("%d-%m-%Y_%H-%M-%S")
     logdir = args.exp_name + '_' + time.strftime("%d-%m-%Y_%H-%M-%S")
     logdir = os.path.join('data', logdir)
     if not(os.path.exists(logdir)):
@@ -852,6 +762,7 @@ def main():
 
     for p in processes:
         p.join()
+
 
 if __name__ == "__main__":
     main()

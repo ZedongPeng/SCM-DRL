@@ -60,10 +60,12 @@ class SupplyDistribution:
         self.reset()
         self.actions_per_store = 3
 
-        available_actions = np.zeros((self.actions_per_store, self.n_stores + 1))
+        available_actions = np.zeros(
+            (self.actions_per_store, self.n_stores + 1))
         available_actions[:, 0] = [0, int(self.max_prod / 2), self.max_prod]
         for i in range(self.n_stores):
-            available_actions[:, i + 1] = [0, self.cap_truck, self.cap_truck * 2]
+            available_actions[:, i + 1] = [0,
+                                           self.cap_truck, self.cap_truck * 2]
         self.available_actions = available_actions
         # print(available_actions)
 
@@ -86,7 +88,8 @@ class SupplyDistribution:
         elif self.n_stores == 1:
             for i in range(available_actions.shape[0]):
                 for l in range(available_actions.shape[0]):
-                    self.discrete2continuous.append(np.array([int(available_actions[l, 0]), int(available_actions[i, 1])]))
+                    self.discrete2continuous.append(
+                        np.array([int(available_actions[l, 0]), int(available_actions[i, 1])]))
         # print(self.discrete2continuous)
         self.action_space = spaces.Discrete(len(self.discrete2continuous))
 
@@ -94,32 +97,40 @@ class SupplyDistribution:
         """
         Resets the environment to the starting conditions
         """
-        self.s = (self.cap_store / 2).astype(np.int)  # np.zeros(self.n_stores + 1, dtype=int)  # +1 Because the central warehouse is not counted as a store
+        self.s = (self.cap_store / 2).astype(
+            np.int)  # np.zeros(self.n_stores + 1, dtype=int)  # +1 Because the central warehouse is not counted as a store
         #self.s[0] = self.cap_store[0]/2
         self.t = 0
         # Initialize demand and update it directly to avoid jumps in demand of first step
         self.demand = np.zeros(self.n_stores, dtype=int)
         self.update_demand()
         self.demand_old = self.demand.copy()  # np.zeros(self.n_stores, dtype=int)
-        return np.hstack((self.s.copy(), self.demand.copy(), self.demand_old.copy()))  # return current state
+        # return current state
+        return np.hstack((self.s.copy(), self.demand.copy(), self.demand_old.copy()))
 
     def step(self, action):
         # Update state
         temp = self.discrete2continuous
-        self.s[0] = min(self.s[0] + temp[action][0] - sum(temp[action][1:]), self.cap_store[0])
-        self.s[1:] = np.minimum(self.s[1:] - self.demand + temp[action][1:], self.cap_store[1:])
+        self.s[0] = min(self.s[0] + temp[action][0] -
+                        sum(temp[action][1:]), self.cap_store[0])
+        self.s[1:] = np.minimum(
+            self.s[1:] - self.demand + temp[action][1:], self.cap_store[1:])
 
         # Update reward
         reward = (sum(self.demand) * self.price  # revenue
                   - temp[action][0] * self.prod_cost   # production cost
-                  - np.sum(np.maximum(np.zeros(self.n_stores + 1), self.s[:self.n_stores + 1]) * self.store_cost)
+                  - np.sum(np.maximum(np.zeros(self.n_stores + 1),
+                                      self.s[:self.n_stores + 1]) * self.store_cost)
                   # Changed to + so that penalty cost actually decrease reward -- Luke 26/02
-                  + np.sum(np.minimum(np.zeros(self.n_stores + 1), self.s[:self.n_stores + 1])) * self.penalty_cost
+                  + np.sum(np.minimum(np.zeros(self.n_stores + 1),
+                                      self.s[:self.n_stores + 1])) * self.penalty_cost
                   - np.sum(np.ceil(temp[action][1:] / self.cap_truck) * self.truck_cost))
         info = "Demand was: ", self.demand
 
         # Define state
-        state = np.hstack((self.s.copy(), self.demand.copy(), self.demand_old.copy()))  # hstack: Stack arrays in sequence horizontally
+        # hstack: Stack arrays in sequence horizontally
+        state = np.hstack(
+            (self.s.copy(), self.demand.copy(), self.demand_old.copy()))
 
         # Update demand old
         self.demand_old = self.demand.copy()
@@ -153,21 +164,6 @@ class SupplyDistribution:
             # demand[i] = int(np.ceil(1.5 * np.sin(2 * np.pi * (self.t + i) / 26) + 1.5 + np.random.randint(0, 2)))
         self.demand = demand
 
-    # def action_space_itertools(self):
-    #     """
-    #     Returns the set of possibles actions that the agent can make
-    #     :return: The posible actions in a list of tuples. Each tuple with (a0, a1, ..., ak) k = n_stores.
-    #     """
-    #     feasible_actions = []
-    #     a_0 = np.arange(0, self.max_prod + 1)
-    #     # a_0比较好理解，为0在最大生产能力之间
-    #     iterator = [a_0, *[np.arange(0, min(self.s[0], self.cap_store[i] - self.s[i]) + 1) for i in np.arange(1, self.n_stores + 1)]]
-    #     # a_1~n为每个store的送货量delivery amount，需要在小于factory的库存量，小于store的库存容量
-    #     for element in itertools.product(*iterator):
-    #         if np.sum(element[1:]) <= self.s[0]:
-    #             feasible_actions.append(element)
-    #     return np.array(feasible_actions)
-
     def action_space_recur(self):
         '''
         Returns [[a0, a1, ..., ak]]
@@ -193,7 +189,8 @@ class SupplyDistribution:
                 feasible_actions.append([production] + action)
         return np.array(feasible_actions)
 
-    def action_space_recur_aux(self, store_num, current_actions, prod_left):  # prod_left = self.s[0]
+    # prod_left = self.s[0]
+    def action_space_recur_aux(self, store_num, current_actions, prod_left):
         '''
         Returns [[a1, ..., ak]]
         '''
@@ -205,7 +202,8 @@ class SupplyDistribution:
             for action in current_actions:
                 new_action = action + [prod_being_send]
                 new_actions.append(new_action)
-            feasible_actions.extend(self.action_space_recur_aux(store_num + 1, new_actions, prod_left - prod_being_send))
+            feasible_actions.extend(self.action_space_recur_aux(
+                store_num + 1, new_actions, prod_left - prod_being_send))
         return feasible_actions
 
     def action_space_recur_aux_all(self, store_num, current_actions):
@@ -217,7 +215,8 @@ class SupplyDistribution:
             for action in current_actions:
                 new_action = action + [prod_being_send]
                 new_actions.append(new_action)
-            feasible_actions.extend(self.action_space_recur_aux_all(store_num + 1, new_actions))
+            feasible_actions.extend(
+                self.action_space_recur_aux_all(store_num + 1, new_actions))
         return feasible_actions
 
     def action_space_recur2(self):
